@@ -1,65 +1,72 @@
-# ResearchFlow-Agent
+﻿# ResearchFlow-Agent
 
-ResearchFlow-Agent is an MVP full-stack Agent system for graduate research workflows. It helps users read papers, inspect code repositories, analyze experiment logs, manage reusable skills, and review the full execution trace of Agent runs.
-
-The current implementation is designed to run without external model API keys. It provides mock LLM and embedding providers so the complete flow can be started locally, tested end to end, and later extended to real model providers such as OpenAI, Qwen, DeepSeek, Claude, or local embedding models.
-
-## Core Capabilities
+ResearchFlow-Agent 鏄竴涓潰鍚戠爺绌剁敓绉戠爺鍦烘櫙鐨勫叏鏍?Agent 鏅鸿兘浣撶郴缁?MVP銆傞」鐩仛鐒﹁鏂囬槄璇汇€佷唬鐮佷粨搴撶悊瑙ｃ€佸疄楠屾棩蹇楀垎鏋愬拰鍙鐢?Skill 绠＄悊锛屾敮鎸?Agentic RAG銆佸绫诲瀷璁板繂銆丼kill Registry銆佸彈鎺?Skill 鑷繘鍖栥€佸伐鍏疯皟鐢ㄥ拰鎵ц杞ㄨ抗鍙鍖栥€?
+褰撳墠鐗堟湰榛樿鍙互鍦ㄦ棤鐪熷疄妯″瀷 API Key 鐨勬儏鍐典笅杩愯銆傜郴缁熷唴缃?`MockLLMProvider`銆乣MockEmbeddingProvider` 鍜?`NoopReranker`锛屼究浜庢湰鍦板揩閫熻窇閫氬畬鏁存祦绋嬶紱鍚庣画鍙€氳繃 `.env` 鍒囨崲鍒?OpenAI銆丵wen銆丏eepSeek 绛?OpenAI-compatible API銆?
+## 鏍稿績鑳藉姏
 
 ### Agentic RAG
 
-ResearchFlow-Agent supports document ingestion and citation-grounded question answering:
-
-- Upload PDF, Markdown, and TXT documents.
-- Parse documents with PyMuPDF for PDF and direct text reading for Markdown/TXT.
-- Split text with a local `RecursiveTextSplitter`.
-- Store document chunks in SQLite.
-- Build hybrid retrieval indexes:
-  - FAISS vector index
-  - rank-bm25 keyword index
-  - simple score fusion reranking
-- Run Agentic RAG through LangGraph.
-- Return answers with document citations such as:
+ResearchFlow-Agent 鐨勯棶绛旀祦绋嬩笉鏄畝鍗曗€滄瘡涓棶棰橀兘妫€绱⑩€濓紝鑰屾槸涓€涓彲杩借釜鐨?Agentic RAG 宸ヤ綔娴侊細
 
 ```text
-[doc:paper.txt chunk:3]
+User Query
+  -> Working Memory Recall
+  -> Router / Intent Classifier
+  -> 鍒ゆ柇鏄惁闇€瑕佸閮ㄧ煡璇?    -> 涓嶉渶瑕侊細Direct Answer
+    -> 闇€瑕侊細Query Rewrite
+            -> Memory Recall
+            -> Skill Recall
+            -> Code Search / Hybrid Retrieval
+            -> Evidence Selection
+            -> Answer with Citations
+            -> Citation Verify
+  -> Working Memory Writer
+  -> Reflection Writer
+  -> Trace Writer
 ```
 
-### Multi-Layer Memory
+宸叉敮鎸侊細
 
-The memory module supports project-scoped memory records:
+- 涓婁紶 PDF銆丮arkdown銆乀XT 鏂囨。銆?- PDF 浣跨敤 PyMuPDF 瑙ｆ瀽銆?- Markdown/TXT 鐩存帴璇诲彇鏂囨湰銆?- 浣跨敤鏈湴 `RecursiveTextSplitter` 鍒囧垎鏂囨。銆?- 鏂囨。 chunk 鍐欏叆 SQLite銆?- 鏋勫缓椤圭洰绾ф贩鍚堟绱㈢储寮曪細
+  - FAISS 鍚戦噺妫€绱?  - rank-bm25 鍏抽敭璇嶆绱?  - score normalization
+  - merge and deduplicate
+  - task_type 鍔ㄦ€佹潈閲?  - NoopReranker 棰勭暀鎺ュ彛
+- 鍥炵瓟涓繑鍥炲紩鐢ㄦ爣璁帮紝渚嬪锛?
+```text
+[doc:paper.txt chunk:3]
+[code:backend/app/main.py:12]
+```
 
-- `working`: short-term task state, not necessarily long lived.
-- `episodic`: historical tasks and execution summaries.
-- `semantic`: stable project knowledge.
-- `user_profile`: user preferences.
-- `reflection`: failure causes, improvements, and debugging lessons.
-- `skill`: reusable workflow and Skill-related memories.
+### 澶氱被鍨嬭蹇?
+椤圭洰閲囩敤缁熶竴 `memories` 琛ㄥ拰 `MemoryManager` 绠＄悊澶氱被鍨嬭蹇嗭紝涓嶆槸鍏鐙珛绯荤粺銆侻VP 闃舵閲嶇偣钀藉湴 working銆乪pisodic銆乺eflection銆乻kill锛宻emantic 鍜?user_profile 浣滀负鎵╁睍绫诲瀷淇濈暀銆?
+璁板繂绫诲瀷鍖呮嫭锛?
+| 绫诲瀷 | 浣滅敤 |
+| --- | --- |
+| `working` | 浼氳瘽绾х煭鏈熶笂涓嬫枃锛岀敤浜庡杞璇濄€佽拷闂拰鎸囦唬娑堣В |
+| `episodic` | 鍘嗗彶浠诲姟鎽樿锛岃褰?Agent 鍋氳繃浠€涔?|
+| `semantic` | 绋冲畾椤圭洰鐭ヨ瘑銆佽鏂囩粨璁恒€佽儗鏅簨瀹?|
+| `user_profile` | 鐢ㄦ埛鍋忓ソ锛屼緥濡傝瑷€銆佸洖绛旈鏍笺€佺爺绌舵柟鍚?|
+| `reflection` | 澶辫触鍘熷洜銆佹棩蹇楄瘖鏂粡楠屻€佹敼杩涘缓璁?|
+| `skill` | Skill 浣跨敤缁忛獙锛屼緥濡傛煇涓?Skill 浣曟椂瑙﹀彂銆佹晥鏋滃浣?|
 
-Session-level working memory is enabled for Agent chat. The frontend creates a per-project
-`conversation_id`, sends it to `/api/projects/{project_id}/agent/chat`, and stores it in
-`localStorage`. The backend reuses the `memories` table with `memory_type="working"` and tags
-such as `conversation:conv-...`; each turn is written after the answer and the latest 12 turns
-are retained for that conversation. This is session continuity, not checkpoint recovery.
-
-Memory search combines semantic similarity, importance, recency, and memory type match:
-
+璁板繂鍙洖璇勫垎鍏紡锛?
 ```text
 score = similarity * 0.5 + importance * 0.2 + recency * 0.2 + type_match * 0.1
 ```
 
-The MVP uses hard delete for memories. This keeps wrong or low-quality memories from continuing to pollute future recall. A later version can add soft delete and audit history.
+浼氳瘽绾?working memory 宸叉帴鍏?Agent Chat锛?
+- 鍓嶇涓烘瘡涓」鐩敓鎴?`conversation_id`銆?- 璇锋眰 `/api/projects/{project_id}/agent/chat` 鏃舵惡甯?`conversation_id`銆?- 鍚庣鍐欏叆 `memory_type="working"`銆?- 閫氳繃 `tags_json` 淇濆瓨 `conversation:conv-...`銆?- 姣忎釜 conversation 榛樿淇濈暀鏈€杩?12 杞€?- 杩欐槸浼氳瘽杩炵画涓婁笅鏂囷紝涓嶆槸 checkpoint 鎭㈠銆?
+Skill memory 涓?Skill Registry 鐨勫尯鍒細
 
-Skill memory is project-scoped usage experience for registered skills. It is different from
-`skills/*/SKILL.md`: the Skill Registry stores the reusable skill definition, while skill memory
-stores when a skill was recalled for a task, whether it succeeded, and what trigger pattern should
-help future tasks. Agent runs recall skill memories during `skill_recall_node`, inject them into
-answer context, and write new `memory_type="skill"` records after tasks that used recalled skills.
+```text
+Skill Registry = 鎶€鑳藉畾涔夛紝鏉ヨ嚜 skills/*/SKILL.md
+Skill Memory   = 鎶€鑳藉湪鍏蜂綋椤圭洰浠诲姟涓殑浣跨敤缁忛獙
+```
 
+渚嬪 `pytorch_log_debug` 琚煇娆?CUDA OOM 浠诲姟鍛戒腑骞舵垚鍔熺粰鍑哄缓璁悗锛岀郴缁熶細娌夋穩涓€鏉?`memory_type="skill"` 鐨勭粡楠岋紝鍚庣画绫讳技鏃ュ織闂鍙互鍙洖鍙傝€冦€?
 ### Skill Registry
 
-Reusable skills live under the root `skills/` directory:
-
+Skill 鐩綍缁撴瀯锛?
 ```text
 skills/
   skill_name/
@@ -69,7 +76,7 @@ skills/
     assets/
 ```
 
-`SKILL.md` supports YAML frontmatter:
+`SKILL.md` 鏀寔 YAML frontmatter锛屼緥濡傦細
 
 ```yaml
 ---
@@ -82,105 +89,115 @@ trigger: CUDA OOM, checkpoint error, shape mismatch, NaN loss
 ---
 ```
 
-The registry can:
+褰撳墠榛樿鎻愪緵 3 涓ず渚?Skill锛?
+- `paper_review`
+- `pytorch_log_debug`
+- `repo_understanding`
 
-- Scan `skills/`.
-- Parse YAML frontmatter.
-- Sync skills into the database.
-- Search relevant skills with the mock embedding provider.
-- Inject skill summaries into Agent context.
-
-For safety, the current system only parses and displays skill content. It does not automatically execute arbitrary scripts from `skills/*/scripts/`.
-
-### Skill Self-Evolution
-
-ResearchFlow-Agent includes a controlled candidate skill workflow:
-
+瀹夊叏杈圭晫锛?
+- 褰撳墠鐗堟湰鍙鍙栧拰灞曠ず Skill銆?- Agent 鍙互鎶?Skill 鎽樿娉ㄥ叆涓婁笅鏂囥€?- 涓嶈嚜鍔ㄦ墽琛?`scripts/` 涓嬬殑浠绘剰浠ｇ爜銆?- 涓哄悗缁彈鎺ф墽琛屻€佸鎵瑰拰娌欑鏈哄埗棰勭暀鎺ュ彛銆?
+### Skill 鑷繘鍖栭洀褰?
+椤圭洰瀹炵幇浜嗗彈鎺х殑 candidate skill 鐢熸垚銆佸鏍稿拰娉ㄥ唽娴佺▼锛?
 ```text
-task completed
-  -> evaluator checks whether the task is eligible
-  -> reflection generator summarizes reusable experience
-  -> skill miner generates candidate SKILL.md
-  -> user reviews candidate
-  -> approve writes skills/{skill_name}/SKILL.md
-  -> scan skills syncs it into the database
+浠诲姟鎵ц瀹屾垚
+  -> Evaluator 鍒ゆ柇浠诲姟鏄惁鎴愬姛
+  -> Reflection Generator 鎬荤粨鍙鐢ㄧ粡楠?  -> Skill Miner 鍒ゆ柇鏄惁鍊煎緱娌夋穩
+  -> 鐢熸垚 candidate SKILL.md
+  -> 鐢ㄦ埛瀹℃牳
+  -> 瀹℃牳閫氳繃鍚庡啓鍏?skills/{skill_name}/SKILL.md
+  -> scan skills 鍚屾鍒版暟鎹簱
 ```
 
-Safety constraints:
+瀹夊叏绛栫暐锛?
+- candidate skill 榛樿涓嶅惎鐢ㄣ€?- 蹇呴』浜哄伐 approve 鍚庢墠鍐欏叆 `skills/`銆?- 鍐欏叆璺緞浼氭牎楠岋紝閬垮厤璺緞绌胯秺銆?- 褰撳墠鍙敓鎴?`SKILL.md`锛屼笉鑷姩鐢熸垚鍙墽琛岃剼鏈€?
+### 浠ｇ爜浠撳簱鐞嗚В
 
-- Candidate skills are inactive by default.
-- A user must approve a candidate before it is written into `skills/`.
-- Only `SKILL.md` is generated.
-- No executable scripts are generated or executed.
-- Skill names and output paths are validated to prevent path traversal.
+鏀寔涓婁紶 zip 浠ｇ爜浠撳簱鎴栨寚瀹氭湰鍦颁粨搴撹矾寰勶紝骞跺鍏ュ埌锛?
+```text
+data/repos/{project_id}/
+```
 
-### MCP / Tool Calling Foundation
+宸插疄鐜帮細
 
-The current project does not yet implement a full MCP server/client integration, but it has the foundations needed for MCP-style tool calling:
+- 瀹夊叏瑙ｅ帇鍜岃矾寰勬牎楠屻€?- 蹇界暐 `.git`銆乣node_modules`銆乣__pycache__`銆乣.venv`銆乣dist`銆乣build` 绛夌洰褰曘€?- 鏂囦欢鏍戞壂鎻忋€?- 鏂囦欢璇█绫诲瀷璇嗗埆銆?- README 鎽樿銆?- Python 鏂囦欢 class/function 瑙ｆ瀽锛屽熀浜?`ast`銆?- 鏂囦欢鍚嶆悳绱€?- 鍐呭鍏抽敭璇嶆悳绱€?- Python 绗﹀彿鎼滅储銆?- 瀹夊叏璇诲彇鏂囦欢锛岄檺鍒跺ぇ鏂囦欢闀垮害銆?- `repo_qa` 宸ヤ綔娴佸彲鏍规嵁浠ｇ爜鐗囨鍥炵瓟锛屽苟杩斿洖鏂囦欢璺緞鍜岃鍙峰紩鐢ㄣ€?
+### 瀹為獙鏃ュ織鍒嗘瀽
 
-- `app/tools/` contains tool-style modules such as `log_parser`.
-- `app/repo/manager.py` provides repository import, scan, search, and safe file read functions.
-- `app/rag/` provides retrieval tools.
-- `app/skills/` provides skill parsing, registry, search, and mining.
-- Agent workflow nodes call these tools explicitly and record outputs in `task_steps`.
+鏀寔鐢ㄦ埛绮樿创璁粌鏃ュ織銆佹姤閿欎俊鎭垨 traceback锛孉gent 鑷姩璇嗗埆 `log_debug` 浠诲姟銆?
+鍙瘑鍒ā寮忓寘鎷細
 
-Future MCP integration can wrap these modules as formal MCP tools while keeping the existing Agent workflow and trace model.
+- `Traceback`
+- `CUDA out of memory`
+- `RuntimeError`
+- `shape mismatch`
+- `nan loss`
+- `checkpoint loading failed`
+- `ModuleNotFoundError`
+- `PermissionError`
 
-### Execution Trace Visualization
+杈撳嚭缁撴瀯锛?
+- 閿欒鎽樿
+- 鍙兘鍘熷洜
+- 鎺掓煡姝ラ
+- 淇寤鸿
+- 闇€瑕佺敤鎴疯ˉ鍏呯殑淇℃伅
 
-Every Agent run creates:
+褰撳墠瀹炵幇鍩轰簬瑙勫垯鍜?MockLLMProvider锛屼笉浼氬亣瑁呬竴瀹氳兘淇锛涙棤娉曞垽鏂椂浼氭彁绀虹敤鎴疯ˉ鍏呮棩蹇椼€佺幆澧冨拰閰嶇疆銆?
+### 鎵ц杞ㄨ抗鍙鍖?
+姣忔 Agent 杩愯閮戒細鎸佷箙鍖栧畬鏁?trace锛?
+- 璺敱缁撴灉
+- 鏄惁闇€瑕佹绱?- 妫€绱㈣瘉鎹?- Skill 鍙洖
+- Memory 鍙洖
+- 宸ュ叿璋冪敤缁撴灉
+- 鑺傜偣杈撳叆鎽樿
+- 鑺傜偣杈撳嚭
+- 寤惰繜 `latency_ms`
+- 鏈€缁堢瓟妗?
+鍓嶇 Trace Viewer 鏀寔鎸?`task_id` 鏌ョ湅鎵ц姝ラ銆?
+## 鎶€鏈爤
 
-- a row in `tasks`
-- multiple rows in `task_steps`
-
-Each `task_step` records:
-
-- `node_name`
-- `input_json`
-- `output_json`
-- `latency_ms`
-- `created_at`
-
-The frontend Trace Viewer can load a task and inspect every step of the execution path.
-
-## Technology Stack
-
-Backend:
-
+鍚庣锛?
 - Python
 - FastAPI
-- SQLAlchemy ORM
-- SQLite by default, with PostgreSQL migration path
+- SQLAlchemy
+- SQLite
 - Pydantic
 - LangGraph
 - FAISS
 - rank-bm25
 - PyMuPDF
-- pytest
+- python-dotenv
 
-Frontend:
-
+鍓嶇锛?
 - Vue 3
 - TypeScript
 - Vite
 - Element Plus
 - Axios
 
-Model abstraction:
-
-- `BaseLLMProvider`
+妯″瀷鎺ュ彛锛?
 - `MockLLMProvider`
-- `BaseEmbeddingProvider`
+- `OpenAICompatibleLLMProvider`
+- OpenAI / Qwen / DeepSeek 鍏煎鎵╁睍
 - `MockEmbeddingProvider`
-- placeholders for OpenAI, Qwen, DeepSeek, Claude, and real embedding providers
+- `OpenAICompatibleEmbeddingProvider`
+- `NoopReranker`
+- OpenAI-compatible reranker 棰勭暀
 
-## Project Structure
+## 椤圭洰缁撴瀯
 
 ```text
 ResearchFlow-Agent/
   backend/
+    requirements.txt
     app/
+      main.py
+      core/
+        config.py
+      db/
+        base.py
+        session.py
       api/
+        router.py
         routes/
           agent.py
           documents.py
@@ -192,15 +209,9 @@ ResearchFlow-Agent/
           skill_candidates.py
           skills.py
           tasks.py
-        router.py
       agent/
         state.py
         workflow.py
-      core/
-        config.py
-      db/
-        base.py
-        session.py
       llm/
         provider.py
       memory/
@@ -231,21 +242,14 @@ ResearchFlow-Agent/
         registry.py
       tools/
         log_parser.py
-      main.py
-    requirements.txt
+
   frontend/
+    package.json
+    vite.config.ts
     src/
+      App.vue
+      main.ts
       api/
-        agent.ts
-        documents.ts
-        health.ts
-        memories.ts
-        projects.ts
-        repos.ts
-        retrieval.ts
-        skillCandidates.ts
-        skills.ts
-        tasks.ts
       pages/
         AgentWorkspace.vue
         KnowledgeBase.vue
@@ -253,17 +257,8 @@ ResearchFlow-Agent/
         SkillRegistry.vue
         TraceViewer.vue
       styles/
-        main.css
       types/
-        api.ts
-      App.vue
-      main.ts
-    package.json
-    vite.config.ts
-  docs/
-    architecture.md
-    current-status.md
-    development-notes.md
+
   skills/
     paper_review/
       SKILL.md
@@ -271,17 +266,64 @@ ResearchFlow-Agent/
       SKILL.md
     repo_understanding/
       SKILL.md
+
   data/
-    indexes/
-    repos/
-    uploads/
+    .gitkeep
+    uploads/.gitkeep
+    indexes/.gitkeep
+    repos/.gitkeep
+
+  docs/
   tests/
+  .env.example
+  README.md
 ```
 
-## Backend Startup
+## 鐜鍙橀噺
 
-From PowerShell:
+澶嶅埗 `.env.example` 涓?`.env`锛?
+```powershell
+Copy-Item .env.example .env
+```
 
+榛樿 Mock 閰嶇疆鍙互鐩存帴杩愯锛?
+```env
+RESEARCHFLOW_LLM_PROVIDER=mock
+RESEARCHFLOW_EMBEDDING_PROVIDER=mock
+RESEARCHFLOW_RERANKER_PROVIDER=noop
+```
+
+鏍稿績璺緞閰嶇疆锛?
+```env
+RESEARCHFLOW_DATABASE_URL=sqlite:///./data/researchflow.sqlite3
+RESEARCHFLOW_UPLOAD_DIR=data/uploads
+RESEARCHFLOW_REPO_DIR=data/repos
+RESEARCHFLOW_SKILL_DIR=skills
+```
+
+鎺ュ叆鐪熷疄 LLM 绀轰緥锛?
+```env
+RESEARCHFLOW_LLM_PROVIDER=qwen
+RESEARCHFLOW_LLM_API_KEY=your_api_key
+RESEARCHFLOW_LLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+RESEARCHFLOW_LLM_MODEL=qwen-plus
+RESEARCHFLOW_LLM_TIMEOUT_SECONDS=30
+```
+
+鎺ュ叆鐪熷疄 embedding 绀轰緥锛?
+```env
+RESEARCHFLOW_EMBEDDING_PROVIDER=openai
+RESEARCHFLOW_EMBEDDING_API_KEY=your_api_key
+RESEARCHFLOW_EMBEDDING_BASE_URL=https://api.openai.com/v1
+RESEARCHFLOW_EMBEDDING_MODEL=text-embedding-3-small
+RESEARCHFLOW_EMBEDDING_DIMENSION=1536
+```
+
+娉ㄦ剰锛?
+- `.env` 鍖呭惈鐪熷疄瀵嗛挜锛屽凡琚?`.gitignore` 蹇界暐銆?- GitHub 鍙笂浼?`.env.example`銆?- 鏈湴 SQLite銆佷笂浼犳枃浠躲€佺储寮曞拰浠撳簱鏁版嵁榛樿涓嶄笂浼犮€?
+## 鍚庣鍚姩
+
+鍦ㄩ」鐩牴鐩綍鎵ц锛?
 ```powershell
 cd D:\desktop\ResearchFlow-Agent
 python -m venv .venv
@@ -291,14 +333,18 @@ $env:PYTHONPATH="backend"
 uvicorn app.main:app --reload --app-dir backend
 ```
 
-Health check:
-
-```powershell
-curl http://127.0.0.1:8000/api/health
+鍚庣榛樿鍦板潃锛?
+```text
+http://127.0.0.1:8000
 ```
 
-Expected response:
+鍋ュ悍妫€鏌ワ細
 
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/health
+```
+
+棰勬湡杩斿洖锛?
 ```json
 {
   "status": "ok",
@@ -307,448 +353,337 @@ Expected response:
 }
 ```
 
-If you prefer installing dependencies into a local target directory:
+## 鍓嶇鍚姩
 
-```powershell
-python -m pip install --target .deps -r backend\requirements.txt
-$env:PYTHONPATH=".deps;backend"
-uvicorn app.main:app --reload --app-dir backend
-```
-
-## Frontend Startup
-
+鎵撳紑鏂扮殑 PowerShell锛?
 ```powershell
 cd D:\desktop\ResearchFlow-Agent\frontend
 npm install
 npm run dev
 ```
 
-Open:
-
+鍓嶇榛樿鍦板潃锛?
 ```text
 http://127.0.0.1:5173
 ```
 
-The Vite proxy forwards `/api` requests to:
+鍓嶇浼氶€氳繃 Vite proxy 璋冪敤鍚庣 `/api`銆?
+## 绔埌绔?Demo 娴佺▼
 
+### 1. 鍒涘缓椤圭洰
+
+杩涘叆鍓嶇锛?
 ```text
-http://127.0.0.1:8000
+Knowledge Base -> Create Project
 ```
 
-## Environment Variables
-
-Backend settings are defined in `backend/app/core/config.py`.
-
-| Variable | Default | Description |
-| --- | --- | --- |
-| `RESEARCHFLOW_DATABASE_URL` | `sqlite:///./data/researchflow.sqlite3` | SQLAlchemy database URL. SQLite is the default development database. |
-| `RESEARCHFLOW_UPLOAD_DIR` | `data/uploads` | Uploaded document storage directory. |
-| `RESEARCHFLOW_REPO_DIR` | `data/repos` | Imported code repository storage directory. |
-| `RESEARCHFLOW_SKILL_DIR` | `skills` | Root directory scanned by the Skill Registry. |
-| `RESEARCHFLOW_LLM_PROVIDER` | `mock` | LLM provider: `mock`, `openai`, `openai_compatible`, `qwen`, or `deepseek`. |
-| `RESEARCHFLOW_LLM_API_KEY` | empty | API key for real LLM providers. |
-| `RESEARCHFLOW_LLM_BASE_URL` | empty | Optional OpenAI-compatible base URL. Leave empty for OpenAI default. |
-| `RESEARCHFLOW_LLM_MODEL` | `gpt-4.1-mini` | Chat model name. |
-| `RESEARCHFLOW_EMBEDDING_PROVIDER` | `mock` | Embedding provider: `mock`, `openai`, `openai_compatible`, or `qwen`. |
-| `RESEARCHFLOW_EMBEDDING_API_KEY` | empty | API key for real embedding providers. Falls back to LLM key if empty. |
-| `RESEARCHFLOW_EMBEDDING_BASE_URL` | empty | Optional embedding base URL. Falls back to LLM base URL if empty. |
-| `RESEARCHFLOW_EMBEDDING_MODEL` | `text-embedding-3-small` | Embedding model name. |
-| `RESEARCHFLOW_EMBEDDING_DIMENSION` | `1536` | Expected embedding dimension for FAISS index construction. |
-| `RESEARCHFLOW_RERANKER_PROVIDER` | `noop` | Reranker provider: `noop`, `openai`, `openai_compatible`, `qwen`, or `deepseek`. |
-| `RESEARCHFLOW_RERANKER_API_KEY` | empty | API key for real reranker providers. Falls back to LLM key if empty. |
-| `RESEARCHFLOW_RERANKER_BASE_URL` | empty | Optional reranker base URL. Falls back to LLM base URL if empty. |
-| `RESEARCHFLOW_RERANKER_MODEL` | `gpt-4.1-mini` | Chat model used by the OpenAI-compatible reranker. |
-
-Example:
-
-```powershell
-$env:RESEARCHFLOW_DATABASE_URL="sqlite:///./data/dev.sqlite3"
-$env:RESEARCHFLOW_UPLOAD_DIR="data/uploads"
-$env:RESEARCHFLOW_REPO_DIR="data/repos"
-$env:RESEARCHFLOW_SKILL_DIR="skills"
-```
-
-The backend loads `.env` automatically through `python-dotenv`. Copy `.env.example` to `.env` for local development:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-`.env` is ignored by Git. Do not commit real API keys.
-
-Example OpenAI-compatible configuration:
-
-```env
-RESEARCHFLOW_LLM_PROVIDER=openai
-RESEARCHFLOW_LLM_API_KEY=sk-your-key
-RESEARCHFLOW_LLM_MODEL=gpt-4.1-mini
-
-RESEARCHFLOW_EMBEDDING_PROVIDER=openai
-RESEARCHFLOW_EMBEDDING_API_KEY=sk-your-key
-RESEARCHFLOW_EMBEDDING_MODEL=text-embedding-3-small
-RESEARCHFLOW_EMBEDDING_DIMENSION=1536
-
-RESEARCHFLOW_RERANKER_PROVIDER=noop
-```
-
-Example DeepSeek LLM with mock embeddings:
-
-```env
-RESEARCHFLOW_LLM_PROVIDER=deepseek
-RESEARCHFLOW_LLM_API_KEY=your-deepseek-key
-RESEARCHFLOW_LLM_BASE_URL=https://api.deepseek.com
-RESEARCHFLOW_LLM_MODEL=deepseek-chat
-
-RESEARCHFLOW_EMBEDDING_PROVIDER=mock
-RESEARCHFLOW_RERANKER_PROVIDER=noop
-```
-
-After switching from mock embeddings to real embeddings, rebuild project indexes because FAISS dimensions change:
-
-```powershell
-curl -X POST http://127.0.0.1:8000/api/projects/1/index/build
-```
-
-## End-to-End Demo Flow
-
-### 1. Start Backend and Frontend
-
-Backend:
-
-```powershell
-cd D:\desktop\ResearchFlow-Agent
-.\.venv\Scripts\Activate.ps1
-$env:PYTHONPATH="backend"
-uvicorn app.main:app --reload --app-dir backend
-```
-
-Frontend:
-
-```powershell
-cd D:\desktop\ResearchFlow-Agent\frontend
-npm run dev
-```
-
-Open:
-
+鍒涘缓涓€涓」鐩紝渚嬪锛?
 ```text
-http://127.0.0.1:5173
+Agentic RAG Paper Reading
 ```
 
-### 2. Create a Project
+### 2. 涓婁紶鏂囨。
 
-In the frontend:
+鍦?Knowledge Base 椤甸潰閫夋嫨椤圭洰锛屼笂浼狅細
 
-1. Use the top project selector.
-2. Click `New Project`.
-3. Enter a project name and description.
-4. Select the project.
+- PDF
+- Markdown
+- TXT
 
-API alternative:
+涓婁紶鍚庣郴缁熶細锛?
+```text
+淇濆瓨鏂囦欢 -> 瑙ｆ瀽鏂囨湰 -> 鍒囧垎 chunk -> 鍐欏叆 documents/chunks 琛?```
 
-```powershell
-curl -X POST http://127.0.0.1:8000/api/projects `
-  -H "Content-Type: application/json" `
-  -d "{\"name\":\"demo\",\"description\":\"Research demo project\"}"
+### 3. 鏋勫缓绱㈠紩
+
+鐐瑰嚮锛?
+```text
+Build Index
 ```
 
-### 3. Upload a Document
+绯荤粺浼氫负褰撳墠椤圭洰鏋勫缓锛?
+- FAISS index
+- BM25 index
+- chunk id mapping
 
-In `Knowledge Base`:
-
-1. Click `Upload Document`.
-2. Upload `.pdf`, `.md`, `.markdown`, or `.txt`.
-3. Confirm the document appears in the document table.
-4. Click `Chunks` to inspect parsed chunks.
-
-API alternative:
-
-```powershell
-curl -X POST http://127.0.0.1:8000/api/projects/1/documents/upload `
-  -F "file=@D:\path\paper.txt" `
-  -F "chunk_size=800" `
-  -F "chunk_overlap=120"
-```
-
-### 4. Build the Retrieval Index
-
-In `Knowledge Base`, click `Build Index`.
-
-API alternative:
-
-```powershell
-curl -X POST http://127.0.0.1:8000/api/projects/1/index/build
-```
-
-Indexes are stored under:
+绱㈠紩淇濆瓨鍒帮細
 
 ```text
 data/indexes/{project_id}/
 ```
 
-Main files:
+### 4. 妫€绱㈡祴璇?
+鍦?Knowledge Base 鐨?retrieval test 杈撳叆闂锛屼緥濡傦細
 
 ```text
-faiss.index
-chunk_mapping.json
-bm25.pkl
+What retrieval methods does this project use?
 ```
 
-### 5. Ask a Question
+杩斿洖缁撴灉浼氬寘鍚細
 
-In `Agent Workspace`, ask:
+- source
+- content
+- score
+- score_breakdown
+- metadata
+
+### 5. Agent 闂瓟
+
+杩涘叆 Agent Workspace锛岄€夋嫨椤圭洰锛岃緭鍏ワ細
 
 ```text
-What are the main methods in this document?
+What retrieval methods does this project use?
 ```
 
-API alternative:
-
-```powershell
-curl -X POST http://127.0.0.1:8000/api/projects/1/agent/chat `
-  -H "Content-Type: application/json" `
-  -d "{\"message\":\"What are the main methods in this document?\"}"
-```
-
-### 6. View Citations
-
-The Agent response includes citations such as:
+Agent 浼氳嚜鍔細
 
 ```text
-[doc:paper.txt chunk:3]
+Router -> Query Rewrite -> Memory Recall -> Skill Recall -> Hybrid Retrieval -> Evidence Selection -> Answer
 ```
 
-For repository QA, citations look like:
+鍥炵瓟涓簲鍖呭惈绫讳技寮曠敤锛?
+```text
+[doc:agent.txt chunk:1]
+```
+
+### 6. 澶氳疆浼氳瘽
+
+Agent Workspace 宸叉敮鎸侊細
+
+- `Enter` 鍙戦€?- `Shift + Enter` 鎹㈣
+- 姣忎釜椤圭洰鐙珛 `conversation_id`
+- New Conversation 閲嶇疆浼氳瘽
+
+鍙互娴嬭瘯锛?
+```text
+鎴戝枩娆㈢殑妗嗘灦鏄?LangGraph
+```
+
+鐒跺悗缁х画闂細
 
 ```text
-[code:app.py:12]
+鎴戝垰鎵嶈鎴戝枩娆粈涔堟鏋讹紵
 ```
 
-### 7. View Trace
-
-In `Agent Workspace`, the right panel shows runtime steps for the latest response.
-
-In `Trace Viewer`:
-
-1. Select a recent task.
-2. Click `Load Trace`.
-3. Inspect `node_name`, `input_json`, `output_json`, and `latency_ms`.
-
-API alternative:
-
-```powershell
-curl http://127.0.0.1:8000/api/projects/1/tasks
-curl http://127.0.0.1:8000/api/tasks/1/steps
+Trace 涓簲鐪嬪埌锛?
+```text
+working_memory_recall_node
+working_memory_writer_node
 ```
 
-### 8. View Memory
+### 7. 鏌ョ湅 Memory
 
-In `Memory Center`:
+杩涘叆 Memory Center锛?
+- 鎸?`memory_type` 绛涢€?- 鎼滅储璁板繂
+- 鏌ョ湅 `working`銆乣episodic`銆乣reflection`銆乣skill`
+- 鍒犻櫎閿欒璁板繂
 
-1. Filter by memory type.
-2. Search memories.
-3. Inspect episodic and reflection memories generated by Agent runs.
-4. Delete bad memories if needed.
+褰撳墠 MVP 浣跨敤纭垹闄わ紝渚夸簬娓呴櫎閿欒璁板繂锛岄伩鍏嶆薄鏌撳悗缁彫鍥炪€?
+### 8. 鏌ョ湅 Skill
 
-API alternative:
+杩涘叆 Skill Registry锛?
+- 鏌ョ湅 Skill 鍒楄〃
+- 鏌ョ湅 `SKILL.md` 鍐呭
+- 鐐瑰嚮 scan skills
+- 鏌ョ湅 usage count 鍜?success rate
+- 瀹℃牳 candidate skill
 
-```powershell
-curl http://127.0.0.1:8000/api/projects/1/memories
-```
+### 9. 鏌ョ湅 Trace
 
-## API Summary
+杩涘叆 Trace Viewer锛?
+- 閫夋嫨椤圭洰
+- 閫夋嫨 task
+- 鏌ョ湅鑺傜偣鎵ц姝ラ
 
+姣忎釜 step 鍖呭惈锛?
+- `node_name`
+- `input_json`
+- `output_json`
+- `latency_ms`
+
+## API 绠€琛?
 ### Health
 
-| Method | Path | Description |
+| Method | Path | 璇存槑 |
 | --- | --- | --- |
-| `GET` | `/api/health` | Backend health check. |
+| `GET` | `/api/health` | 鍋ュ悍妫€鏌?|
 
 ### Projects
 
-| Method | Path | Description |
+| Method | Path | 璇存槑 |
 | --- | --- | --- |
-| `POST` | `/api/projects` | Create project. |
-| `GET` | `/api/projects` | List projects. |
-| `GET` | `/api/projects/{project_id}` | Get project. |
-| `DELETE` | `/api/projects/{project_id}` | Delete project. |
+| `POST` | `/api/projects` | 鍒涘缓椤圭洰 |
+| `GET` | `/api/projects` | 椤圭洰鍒楄〃 |
+| `GET` | `/api/projects/{project_id}` | 椤圭洰璇︽儏 |
+| `DELETE` | `/api/projects/{project_id}` | 鍒犻櫎椤圭洰 |
 
 ### Documents
 
-| Method | Path | Description |
+| Method | Path | 璇存槑 |
 | --- | --- | --- |
-| `POST` | `/api/projects/{project_id}/documents/upload` | Upload and parse PDF/Markdown/TXT. |
-| `GET` | `/api/projects/{project_id}/documents` | List project documents. |
-| `GET` | `/api/documents/{document_id}` | Get document metadata. |
-| `DELETE` | `/api/documents/{document_id}` | Delete document and chunks. |
-| `GET` | `/api/documents/{document_id}/chunks` | List document chunks. |
+| `POST` | `/api/projects/{project_id}/documents/upload` | 涓婁紶鏂囨。 |
+| `GET` | `/api/projects/{project_id}/documents` | 椤圭洰鏂囨。鍒楄〃 |
+| `GET` | `/api/documents/{document_id}` | 鏂囨。璇︽儏 |
+| `GET` | `/api/documents/{document_id}/chunks` | 鏌ョ湅 chunk |
+| `DELETE` | `/api/documents/{document_id}` | 鍒犻櫎鏂囨。 |
 
 ### Retrieval
 
-| Method | Path | Description |
+| Method | Path | 璇存槑 |
 | --- | --- | --- |
-| `POST` | `/api/projects/{project_id}/index/build` | Build FAISS and BM25 indexes. |
-| `POST` | `/api/projects/{project_id}/retrieve` | Hybrid retrieval test. |
+| `POST` | `/api/projects/{project_id}/index/build` | 鏋勫缓妫€绱㈢储寮?|
+| `POST` | `/api/projects/{project_id}/retrieve` | 娣峰悎妫€绱?|
 
 ### Agent
 
-| Method | Path | Description |
+| Method | Path | 璇存槑 |
 | --- | --- | --- |
-| `POST` | `/api/projects/{project_id}/agent/chat` | Run Agent workflow. |
+| `POST` | `/api/projects/{project_id}/agent/chat` | Agent 闂瓟 |
 
-Supported task types:
-
-```text
-paper_qa
-repo_qa
-log_debug
-general_qa
+璇锋眰绀轰緥锛?
+```json
+{
+  "message": "What retrieval methods does this project use?",
+  "conversation_id": "conv-123"
+}
 ```
 
-### Repository Understanding
-
-| Method | Path | Description |
-| --- | --- | --- |
-| `POST` | `/api/projects/{project_id}/repos/upload` | Upload ZIP repo or import local workspace path. |
-| `GET` | `/api/projects/{project_id}/repos/tree` | Get file tree, README summary, files, and symbols. |
-| `POST` | `/api/projects/{project_id}/repos/search` | Search filenames, content, and Python symbols. |
-| `GET` | `/api/projects/{project_id}/repos/files?path=...` | Read a safe relative file path. |
+鍝嶅簲鍖呭惈锛?
+- `task_id`
+- `conversation_id`
+- `task_type`
+- `answer`
+- `citations`
+- `steps`
+- `errors`
 
 ### Memories
 
-| Method | Path | Description |
+| Method | Path | 璇存槑 |
 | --- | --- | --- |
-| `POST` | `/api/projects/{project_id}/memories` | Create memory. |
-| `GET` | `/api/projects/{project_id}/memories` | List memories, optionally by type. |
-| `POST` | `/api/projects/{project_id}/memories/search` | Search memories. |
-| `DELETE` | `/api/memories/{memory_id}` | Delete memory. |
+| `POST` | `/api/projects/{project_id}/memories` | 鍒涘缓璁板繂 |
+| `GET` | `/api/projects/{project_id}/memories` | 璁板繂鍒楄〃 |
+| `POST` | `/api/projects/{project_id}/memories/search` | 鎼滅储璁板繂 |
+| `DELETE` | `/api/memories/{memory_id}` | 鍒犻櫎璁板繂 |
 
 ### Skills
 
-| Method | Path | Description |
+| Method | Path | 璇存槑 |
 | --- | --- | --- |
-| `GET` | `/api/skills` | List registered skills. |
-| `GET` | `/api/skills/{skill_id}` | Get skill detail and `SKILL.md` content. |
-| `POST` | `/api/skills/scan` | Scan `skills/` and sync database. |
-| `POST` | `/api/projects/{project_id}/skills/search` | Search relevant skills for a task. |
+| `GET` | `/api/skills` | Skill 鍒楄〃 |
+| `GET` | `/api/skills/{skill_id}` | Skill 璇︽儏 |
+| `POST` | `/api/skills/scan` | 鎵弿 Skill 鐩綍 |
+| `POST` | `/api/projects/{project_id}/skills/search` | 鎼滅储鐩稿叧 Skill |
 
 ### Skill Candidates
 
-| Method | Path | Description |
+| Method | Path | 璇存槑 |
 | --- | --- | --- |
-| `POST` | `/api/tasks/{task_id}/skill-candidates` | Generate candidate skill from a completed task. |
-| `GET` | `/api/projects/{project_id}/skill-candidates` | List project candidate skills. |
-| `POST` | `/api/skill-candidates/{candidate_id}/approve` | Approve and register candidate skill. |
-| `POST` | `/api/skill-candidates/{candidate_id}/reject` | Reject candidate skill. |
+| `POST` | `/api/tasks/{task_id}/skill-candidates` | 浠庝换鍔＄敓鎴?candidate skill |
+| `GET` | `/api/projects/{project_id}/skill-candidates` | 椤圭洰 candidate skills |
+| `POST` | `/api/skill-candidates/{candidate_id}/approve` | 瀹℃牳閫氳繃 |
+| `POST` | `/api/skill-candidates/{candidate_id}/reject` | 鎷掔粷 |
 
-### Tasks and Trace
+### Repositories
 
-| Method | Path | Description |
+| Method | Path | 璇存槑 |
 | --- | --- | --- |
-| `GET` | `/api/projects/{project_id}/tasks` | List project tasks. |
-| `GET` | `/api/tasks/{task_id}` | Get task metadata. |
-| `GET` | `/api/tasks/{task_id}/steps` | Get persisted task steps. |
+| `POST` | `/api/projects/{project_id}/repos/upload` | 涓婁紶 zip 浠ｇ爜浠撳簱 |
+| `POST` | `/api/projects/{project_id}/repos/import-local` | 瀵煎叆鏈湴浠撳簱 |
+| `GET` | `/api/projects/{project_id}/repos/tree` | 鑾峰彇鏂囦欢鏍戝拰绗﹀彿 |
+| `POST` | `/api/projects/{project_id}/repos/search` | 鎼滅储浠ｇ爜 |
+| `GET` | `/api/projects/{project_id}/repos/files?path=` | 瀹夊叏璇诲彇鏂囦欢 |
 
-## Current Implemented Features
+### Tasks / Trace
 
-Backend:
+| Method | Path | 璇存槑 |
+| --- | --- | --- |
+| `GET` | `/api/projects/{project_id}/tasks` | 椤圭洰浠诲姟鍒楄〃 |
+| `GET` | `/api/tasks/{task_id}` | 浠诲姟璇︽儏 |
+| `GET` | `/api/tasks/{task_id}/steps` | 浠诲姟鎵ц姝ラ |
 
-- FastAPI application skeleton.
-- SQLite + SQLAlchemy ORM.
-- Startup database initialization with `create_all`.
-- Project CRUD.
-- Document upload, parsing, splitting, chunk persistence.
-- Hybrid retrieval with FAISS + BM25 + score fusion.
-- Mock embedding provider.
-- LLM provider abstraction and MockLLMProvider.
-- LangGraph Agent workflow.
-- Agentic RAG with citations.
-- Repository import, scan, search, safe file read.
-- Experiment log parsing and rule-based diagnosis.
-- Multi-layer memory manager, including session working memory and skill usage memory.
-- Skill Registry parser, scanner, search, and APIs.
-- Controlled skill candidate generation, approve, and reject flow.
-- Persisted task and task step trace APIs.
-- pytest coverage for main backend flows.
-
-Frontend:
-
-- Vue 3 + TypeScript + Element Plus management console.
-- Left navigation, top project selector, and backend health indicator.
-- Agent Workspace with answer, task type, citations, runtime steps, and session-level working memory.
-- Structured `log_debug` result display.
-- Knowledge Base with project creation, document upload/list/delete, chunk viewer, index build, retrieval test, repository import/search.
-- Memory Center with list, filter, search, create, and delete.
-- Skill Registry with skill list, SKILL.md viewer, scan button, candidate review.
-- Trace Viewer with task selection and persisted step inspection.
-- Centralized `src/api/` API clients.
-- Shared TypeScript API types in `src/types/api.ts`.
-
-Testing and checks:
+## 娴嬭瘯涓庢鏌?
+鍚庣缂栬瘧妫€鏌ワ細
 
 ```powershell
 .\.venv\Scripts\python.exe -m compileall backend\app tests
+```
+
+鍚庣娴嬭瘯锛?
+```powershell
 $env:PYTHONPATH="backend"
 .\.venv\Scripts\python.exe -m pytest tests
+```
+
+鍓嶇鏋勫缓锛?
+```powershell
 cd frontend
 npm run build
 ```
 
-The latest validation completed with:
+褰撳墠娴嬭瘯瑕嗙洊涓昏鍖呮嫭锛?
+- health
+- project CRUD
+- document upload / chunks
+- hybrid retrieval
+- agent workflow
+- working memory
+- skill memory
+- memories API
+- skill registry
+- skill candidates
+- repository import/search
+
+## 褰撳墠宸插疄鐜板姛鑳?
+鍚庣锛?
+- FastAPI 搴旂敤楠ㄦ灦銆?- SQLite + SQLAlchemy ORM銆?- 鍚姩鏃惰嚜鍔?`create_all`銆?- Project CRUD銆?- Document upload / parse / split / chunk persistence銆?- Hybrid retrieval锛欶AISS + BM25 + fusion銆?- BaseRetriever / BM25Retriever / VectorRetriever / HybridRetriever銆?- Mock embedding provider銆?- LLM provider 鎶借薄鍜?MockLLMProvider銆?- OpenAI-compatible LLM provider銆?- LangGraph Agent workflow銆?- Agentic RAG with citations銆?- Direct Answer 璺敱銆?- Session-level working memory銆?- Episodic / reflection / skill memory銆?- Skill Registry parser / scanner / search銆?- Controlled candidate skill approve/reject銆?- Repository import / scan / search / safe file read銆?- Experiment log parser and rule-based diagnosis銆?- Persisted task steps and trace APIs銆?- pytest 瑕嗙洊鏍稿績娴佺▼銆?
+鍓嶇锛?
+- Vue 3 + TypeScript + Element Plus 绠＄悊鐣岄潰銆?- 宸︿晶瀵艰埅銆?- 椤堕儴椤圭洰閫夋嫨銆?- 鍚庣鍋ュ悍鐘舵€併€?- Agent Workspace銆?- Enter 鍙戦€侊紝Shift+Enter 鎹㈣銆?- 浼氳瘽绾?working memory 鏍囪瘑鍜?New Conversation銆?- Knowledge Base銆?- Memory Center銆?- Skill Registry銆?- Trace Viewer銆?- `src/api` 缁熶竴 API 灏佽銆?- `src/types` 缁熶竴 TypeScript 绫诲瀷銆?
+## GitHub 涓婁紶璇存槑
+
+椤圭洰 `.gitignore` 宸查厤缃細
 
 ```text
-backend compile: passed
-pytest: 23 passed
-frontend build: passed
+.env
+.venv/
+.tmp/
+.idea/
+frontend/node_modules/
+frontend/dist/
+data/**
+skills/*_task_*/
 ```
 
-## Roadmap
+鍙繚鐣欙細
 
-Near-term:
+```text
+.env.example
+data/.gitkeep
+data/uploads/.gitkeep
+data/indexes/.gitkeep
+data/repos/.gitkeep
+skills/paper_review/SKILL.md
+skills/pytorch_log_debug/SKILL.md
+skills/repo_understanding/SKILL.md
+```
 
-- Add Alembic migrations instead of relying only on `create_all`.
-- Add richer task list and task detail views.
-- Add document re-index and repository re-scan controls.
-- Add frontend project delete and edit support.
-- Add better markdown rendering for Agent answers.
-- Add pagination for documents, memories, tasks, and trace steps.
+鍥犳涓嶄細涓婁紶锛?
+- 鐪熷疄 API Key
+- SQLite 鏁版嵁搴?- 涓婁紶 PDF
+- FAISS/BM25 绱㈠紩
+- 鏈湴瀵煎叆浠撳簱
+- 澶фā鍨嬫潈閲嶆枃浠?- node_modules
+- Python 铏氭嫙鐜
 
-Model and retrieval:
+## 鍚庣画瑙勫垝
 
-- Add real embedding providers such as bge-m3, OpenAI embeddings, or Qwen embeddings.
-- Add real LLM providers for OpenAI, Qwen, DeepSeek, and Claude.
-- Add reranker model support.
-- Add token-aware text splitting.
-- Add document-level metadata filters and citation previews.
-
-Repository understanding:
-
-- Add multi-repository support per project.
-- Add tree-sitter for multi-language symbol extraction.
-- Add code chunk indexing into the RAG retrieval layer.
-- Add dependency graph and call graph analysis.
-- Add safer, opt-in repository commands with explicit approval.
-
-Memory and skills:
-
-- Add soft delete and audit trail for memories.
-- Add memory quality review.
-- Add skill versioning.
-- Add skill execution sandbox design.
-- Add approval workflow for generated scripts before any execution support.
-
-MCP and tools:
-
-- Wrap existing tool modules as MCP-compatible tools.
-- Add MCP server/client configuration.
-- Add tool permission policies.
-- Add richer trace records for tool inputs, outputs, and errors.
-
-Production readiness:
-
-- Add authentication and workspace isolation.
-- Add PostgreSQL deployment profile.
-- Add background jobs for large uploads and indexing.
-- Add file size limits and upload progress.
-- Add Docker Compose.
-- Add structured logging and observability.
+Agent 鑳藉姏锛?
+- 鏇寸粏绮掑害 Query Analyzer銆?- 鏇村己 Evidence Selection銆?- 鍙彃鎷?bge-reranker銆?- LangGraph checkpoint 鎭㈠銆?- 鏇村畬鏁村伐鍏疯皟鐢ㄥ崗璁€?- MCP 宸ュ叿鎺ュ叆銆?
+RAG 鑳藉姏锛?
+- 鎺ュ叆鐪熷疄 embedding锛屼緥濡?bge-m3銆丱penAI embedding銆?- 澧炲姞 chunk-level metadata filter銆?- 澧炲姞 citation verification銆?- 澧炲姞澶氭枃妗ｅ姣旈棶绛斻€?
+浠ｇ爜鐞嗚В锛?
+- 寮曞叆 tree-sitter銆?- 鏋勫缓璺ㄨ瑷€ symbol graph銆?- 鏀寔璋冪敤閾惧垎鏋愩€?- 鏀寔渚濊禆鍥惧拰妯″潡鍏崇郴鍥俱€?
+璁板繂涓?Skill锛?
+- 璁板繂杞垹闄ゅ拰瀹¤銆?- 璁板繂璐ㄩ噺璇勫垎銆?- Skill 鐗堟湰绠＄悊銆?- Skill 浣跨敤鏁堟灉璇勪及銆?- 鍙楁帶鑴氭湰鎵ц娌欑銆?
+鍓嶇锛?
+- Markdown 娓叉煋銆?- 寮曠敤鐐瑰嚮璺宠浆鍘熸枃 chunk銆?- Trace 鑺傜偣鍥惧彲瑙嗗寲銆?- Skill candidate diff 瀹℃牳銆?- 鏂囨。棰勮鍜屼唬鐮佹枃浠堕瑙堛€?
