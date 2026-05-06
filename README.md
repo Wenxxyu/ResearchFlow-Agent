@@ -108,7 +108,6 @@ ResearchFlow-Agent/
   README.md
 ```
 
-注意：`data/` 只提交 `.gitkeep` 占位文件，本地数据库、上传文件、索引和仓库数据不会上传到 GitHub。
 
 ## 环境变量
 
@@ -144,7 +143,6 @@ RESEARCHFLOW_LLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 RESEARCHFLOW_LLM_MODEL=qwen-plus
 ```
 
-`.env` 包含真实 API Key，已被 `.gitignore` 忽略；GitHub 只上传 `.env.example`。
 
 ## 后端启动
 
@@ -209,10 +207,6 @@ http://127.0.0.1:5173
 8. 在 Memory Center 查看 working、episodic、reflection、skill 等记忆。
 9. 在 Skill Registry 查看和审核技能。
 
-Agent Workspace 快捷键：
-
-- Enter：发送
-- Shift + Enter：换行
 
 ## 常用 API
 
@@ -257,26 +251,3 @@ $env:PYTHONPATH="backend"
 cd frontend
 npm run build
 ```
-
-## GitHub 上传说明
-
-项目已配置 `.gitignore`，不会上传：
-
-- `.env`
-- `.venv/`
-- `frontend/node_modules/`
-- `frontend/dist/`
-- `data/` 下的数据库、上传文件、索引和仓库数据
-- `.tmp/`
-- `__pycache__/`
-
-会上传：
-
-- `.env.example`
-- 后端源码
-- 前端源码
-- README
-- docs
-- tests
-- 默认示例 skills
-- `data/*/.gitkeep` 占位文件
