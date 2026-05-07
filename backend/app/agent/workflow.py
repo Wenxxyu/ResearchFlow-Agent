@@ -7,6 +7,7 @@ from langgraph.graph import END, StateGraph
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.agent.router import IntentRouter
 from app.agent.state import AgentState, AgentStep, CodeSearchHit, RecalledMemory, RecalledSkill, RetrievedChunk
 from app.llm.provider import BaseLLMProvider, get_llm_provider
 from app.memory.manager import MemoryManager
@@ -37,6 +38,8 @@ def run_agentic_rag_workflow(
         "task_type": "general_chat",
         "needs_retrieval": False,
         "route_reason": "",
+        "route_confidence": 0.0,
+        "route_source": "init",
         "rewritten_query": "",
         "recalled_skills": [],
         "recalled_memories": [],
@@ -142,52 +145,14 @@ class AgenticRAGWorkflow:
         return {"working_memories": recalled}
 
     def router_node(self, state: AgentState) -> dict[str, Any]:
-        raw_input = state["user_input"].strip()
-        user_input = raw_input.lower()
-        if any(
-            keyword in user_input
-            for keyword in [
-                "traceback",
-                "cuda out of memory",
-                "runtimeerror",
-                "shape mismatch",
-                "size mismatch",
-                "nan loss",
-                "loss nan",
-                "checkpoint loading failed",
-                "module not found",
-                "modulenotfounderror",
-                "permissionerror",
-                "log",
-                "日志",
-                "报错",
-                "oom",
-            ]
-        ):
-            task_type = "log_debug"
-            needs_retrieval = False
-            route_reason = "Log/debug pattern detected; use log parser tool route."
-        elif any(keyword in user_input for keyword in ["论文", "paper", "method", "citation", "实验"]):
-            task_type = "paper_qa"
-            needs_retrieval = True
-            route_reason = "Paper/document intent detected; retrieve project evidence."
-        elif any(keyword in user_input for keyword in ["文档", "上传", "简历", "pdf", "文件中", "文档里", "根据", "总结我上传"]):
-            task_type = "paper_qa"
-            needs_retrieval = True
-            route_reason = "Project document intent detected; retrieve project evidence."
-        elif any(keyword in user_input for keyword in ["代码", "仓库", "函数", "文件", "class", "repo", "function", "error"]):
-            task_type = "repo_qa"
-            needs_retrieval = True
-            route_reason = "Repository/code intent detected; use code search and retrieval route."
-        else:
-            task_type = "general_qa"
-            needs_retrieval = infer_general_retrieval_need(raw_input)
-            route_reason = (
-                "General query appears to ask about project-specific knowledge; retrieve optional evidence."
-                if needs_retrieval
-                else "General query does not need external project knowledge; answer directly."
-            )
-        return {"task_type": task_type, "needs_retrieval": needs_retrieval, "route_reason": route_reason}
+        intent = IntentRouter(self.llm_provider).classify(state["user_input"])
+        return {
+            "task_type": intent.task_type,
+            "needs_retrieval": intent.needs_retrieval,
+            "route_reason": intent.reason,
+            "route_confidence": intent.confidence,
+            "route_source": intent.source,
+        }
 
     def direct_answer_node(self, state: AgentState) -> dict[str, Any]:
         llm_answer = self.llm_provider.generate(
@@ -485,7 +450,8 @@ class AgenticRAGWorkflow:
                 max_tokens=1024,
             )
             citations = [chunk["citation"] for chunk in state["selected_evidence"]]
-            return {"answer": llm_answer, "citations": citations}
+            answer = f"{llm_answer}\n\nEvidence used: " + " ".join(citations) if citations else llm_answer
+            return {"answer": answer, "citations": citations}
 
         if not state["selected_evidence"]:
             if state["task_type"] == "repo_qa" and state["code_search_results"]:
@@ -717,6 +683,8 @@ def summarize_node_input(state: AgentState) -> dict[str, Any]:
         "task_type": state["task_type"],
         "needs_retrieval": state["needs_retrieval"],
         "route_reason": state["route_reason"],
+        "route_confidence": state["route_confidence"],
+        "route_source": state["route_source"],
         "user_input": state["user_input"],
         "rewritten_query": state["rewritten_query"],
         "retrieved_chunk_count": len(state["retrieved_chunks"]),
@@ -743,29 +711,6 @@ def route_after_router(state: AgentState) -> str:
     if state["needs_retrieval"]:
         return "retrieval"
     return "direct"
-
-
-def infer_general_retrieval_need(user_input: str) -> bool:
-    stripped = user_input.strip()
-    lowered = stripped.lower()
-    direct_patterns = [
-        "1+1",
-        "1 + 1",
-        "你是谁",
-        "who are you",
-        "hello",
-        "hi",
-        "你好",
-    ]
-    if any(pattern in lowered for pattern in direct_patterns):
-        return False
-    if any(keyword in lowered for keyword in ["根据", "上传", "文档", "简历", "pdf", "项目", "资料", "知识库"]):
-        return True
-    if any(keyword in lowered for keyword in ["retrieval", "method", "methods", "this project", "uses"]):
-        return True
-    if any(keyword in lowered for keyword in ["谁", "介绍", "总结", "是什么", "有哪些", "经历"]):
-        return True
-    return False
 
 
 def conversation_tag(conversation_id: str) -> str:

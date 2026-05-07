@@ -81,6 +81,8 @@ class AgentState(TypedDict):
     task_type: str
     needs_retrieval: bool
     route_reason: str
+    route_confidence: float
+    route_source: str
     rewritten_query: str
     recalled_skills: list[RecalledSkill]
     recalled_memories: list[RecalledMemory]

@@ -9,6 +9,7 @@ ResearchFlow-Agent 是一个面向研究生科研场景的全栈 Agent 系统，
 - 文档问答：支持 PDF、Markdown、TXT 上传、解析、切分、索引和带引用问答。
 - 混合检索：支持 FAISS 向量检索、BM25 关键词检索、分数归一化、结果融合和去重。
 - Agentic RAG：根据问题自动判断是否需要检索，不需要外部知识时直接回答，需要外部知识时进入检索增强流程。
+- LLM 意图识别：Router 支持规则强匹配、LLM 分类、`confidence`、`reason` 和规则 fallback。
 - 多类型记忆：支持 working、episodic、semantic、user_profile、reflection、skill 等记忆类型。
 - 会话级 Working Memory：前端生成 `conversation_id`，后端保存当前会话最近对话，用于多轮追问。
 - Skill Registry：通过 `skills/*/SKILL.md` 管理可复用技能。
@@ -52,6 +53,9 @@ ResearchFlow-Agent 是一个面向研究生科研场景的全栈 Agent 系统，
 ```text
 用户问题
   -> Router / Intent Classifier
+     -> 强规则匹配
+     -> LLM intent classification
+     -> fallback rule
   -> 判断任务类型和是否需要外部知识
      -> Direct Answer
      -> Paper QA / RAG

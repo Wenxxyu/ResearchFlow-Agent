@@ -27,6 +27,7 @@ class Settings(BaseModel):
     embedding_base_url: str | None = os.getenv("RESEARCHFLOW_EMBEDDING_BASE_URL") or None
     embedding_model: str = os.getenv("RESEARCHFLOW_EMBEDDING_MODEL", "text-embedding-3-small")
     embedding_dimension: int = int(os.getenv("RESEARCHFLOW_EMBEDDING_DIMENSION", "1536"))
+    embedding_batch_size: int = int(os.getenv("RESEARCHFLOW_EMBEDDING_BATCH_SIZE", "10"))
     embedding_timeout_seconds: float = float(os.getenv("RESEARCHFLOW_EMBEDDING_TIMEOUT_SECONDS", "60"))
     reranker_provider: str = os.getenv("RESEARCHFLOW_RERANKER_PROVIDER", "noop")
     reranker_api_key: str | None = os.getenv("RESEARCHFLOW_RERANKER_API_KEY") or None

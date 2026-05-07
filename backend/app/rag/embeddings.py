@@ -48,6 +48,7 @@ class OpenAICompatibleEmbeddingProvider(BaseEmbeddingProvider):
         model: str,
         base_url: str | None = None,
         dimension: int = 1536,
+        batch_size: int = 10,
         timeout_seconds: float = 60,
     ) -> None:
         from openai import OpenAI
@@ -58,15 +59,25 @@ class OpenAICompatibleEmbeddingProvider(BaseEmbeddingProvider):
         self.client = OpenAI(**kwargs)
         self.model = model
         self.dimension = dimension
+        self.batch_size = max(1, min(batch_size, 10))
 
     def embed_texts(self, texts: list[str]) -> np.ndarray:
         if not texts:
             return np.zeros((0, self.dimension), dtype=np.float32)
 
-        response = self.client.embeddings.create(model=self.model, input=texts)
-        vectors = np.array([item.embedding for item in response.data], dtype=np.float32)
+        all_embeddings: list[list[float]] = []
+        for start in range(0, len(texts), self.batch_size):
+            batch = texts[start : start + self.batch_size]
+            response = self.client.embeddings.create(model=self.model, input=batch)
+            all_embeddings.extend(item.embedding for item in response.data)
+
+        vectors = np.array(all_embeddings, dtype=np.float32)
         if vectors.ndim != 2:
             raise RuntimeError("Embedding provider returned invalid vector shape.")
+        if vectors.shape[0] != len(texts):
+            raise RuntimeError(
+                f"Embedding provider returned {vectors.shape[0]} vectors for {len(texts)} input texts."
+            )
 
         norms = np.linalg.norm(vectors, axis=1, keepdims=True)
         norms[norms == 0] = 1.0
@@ -93,6 +104,7 @@ def get_embedding_provider() -> BaseEmbeddingProvider:
             base_url=settings.embedding_base_url or settings.llm_base_url,
             model=settings.embedding_model,
             dimension=settings.embedding_dimension,
+            batch_size=settings.embedding_batch_size,
             timeout_seconds=settings.embedding_timeout_seconds,
         )
 
